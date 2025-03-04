@@ -1,5 +1,5 @@
 # requirements.txt
 streamlit
 pandas
-mysqlclient==8.0.30
+mysqlclient==2.1.1
 SQLAlchemy==2.0.0
