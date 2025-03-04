@@ -12,9 +12,9 @@ from streamlit.components.v1 import html
 from streamlit_gsheets import GSheetsConnection
 
 # Create a connection object
-conn = st.connection("gsheets", type=GSheetsConnection)  
-experiment_data = conn.read(worksheet="Sheet1", usecols=list(range(13)), ttl=5)
-participant_data = conn.read(worksheet="Sheet2", usecols=list(range(12)), ttl=5)
+conn = st.connection("mysql", type='sql')  
+experiment_data = conn.query('SELECT * from study_data.Sheet1', ttl=5)
+participant_data = conn.query('SELECT * from study_data.Sheet2', ttl=5)
 
 if 'experiment_responses' not in st.session_state:
         st.session_state.experiment_responses = pd.DataFrame()
