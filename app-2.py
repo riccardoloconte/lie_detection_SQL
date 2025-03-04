@@ -1,15 +1,11 @@
 import streamlit as st
 import time
 import datetime
-import gspread
 import pandas as pd 
 import numpy as np
 import random
 import uuid 
-import streamlit_gsheets
-from google.oauth2.service_account import Credentials
 from streamlit.components.v1 import html
-from streamlit_gsheets import GSheetsConnection
 
 # Create a connection object
 conn = st.connection("mysql", type='sql')  
