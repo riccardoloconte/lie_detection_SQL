@@ -452,7 +452,13 @@ def experiment_page():
             st.session_state.slider_moved = False  # Reset slider moved status for the next statement
             st.rerun()  
         else:
-            conn.update(worksheet="Sheet1", data=combined_data)
+            with conn.session as s:
+                for index, row in combined_data.iterrows():
+                    s.execute('''
+                        INSERT INTO Sheet1 (date, accuracy_condition, prolific_id, participant_id, consent, statement_id, text, statement_condition, confidence_range, duration, correct_prediction, ai_judgment, participant_judgment) 
+                        VALUES (:date, :accuracy_condition, :prolific_id, :participant_id, :consent, :statement_id, :text, :statement_condition, :confidence_range, :duration, :correct_prediction, :ai_judgment, :participant_judgment)
+                    ''', params=row.to_dict())
+                s.commit()
             st.session_state.page = 'final_questions'
             st.rerun()
 
