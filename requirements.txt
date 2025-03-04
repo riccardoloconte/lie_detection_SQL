@@ -1,5 +1,5 @@
-gspread
+# requirements.txt
 streamlit
 pandas
-google-auth
-git+https://github.com/streamlit/gsheets-connection
+mysqlclient==8.0.30
+SQLAlchemy==2.0.0
