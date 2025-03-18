@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import random
 import uuid 
-from streamlit.components.v1 import HTML
+from streamlit.components.v1 import html
 
 
 conn = st.connection("sql")
