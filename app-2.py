@@ -5,24 +5,12 @@ import pandas as pd
 import numpy as np
 import random
 import uuid 
-from streamlit.components.v1 import html
-import mysql.connector
+from streamlit.components.v1 import HTML
 
-def get_connection():
-    """
-    Establishes and returns a MySQL connection using credentials from Streamlit secrets.
-    """
-    try:
-        connection = mysql.connector.connect(
-            host=st.secrets["mysql"]["host"],
-            user=st.secrets["mysql"]["user"],
-            password=st.secrets["mysql"]["password"],
-            database=st.secrets["mysql"]["database"],
-        )
-        return connection
-    except mysql.connector.Error as e:
-        st.error(f"Error connecting to MySQL: {e}")
-        return None
+
+conn = st.connection("sql")
+df = conn.query("SELECT * FROM Sheet1)
+
 
 if 'experiment_responses' not in st.session_state:
         st.session_state.experiment_responses = pd.DataFrame()
@@ -128,6 +116,7 @@ def welcome_page():
     st.write("""In this study, we are investigating how people make decisions when evaluating the veracity of statements. 
              We will now give you detailed instructions. **Please read them carefully.**
              \nOnce you complete the experiment, you will be redirected to Prolific.""")
+    st.dataframe(df)
     
     if st.button("Next"):
         update_progress()
