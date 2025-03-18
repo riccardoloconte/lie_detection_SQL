@@ -6,11 +6,23 @@ import numpy as np
 import random
 import uuid 
 from streamlit.components.v1 import html
+import mysql.connector
 
-# Create a connection object
-conn = st.connection("mysql", type='sql')  
-experiment_data = conn.query('SELECT * from study_data.Sheet1', ttl=5)
-participant_data = conn.query('SELECT * from study_data.Sheet2', ttl=5)
+def get_connection():
+    """
+    Establishes and returns a MySQL connection using credentials from Streamlit secrets.
+    """
+    try:
+        connection = mysql.connector.connect(
+            host=st.secrets["mysql"]["host"],
+            user=st.secrets["mysql"]["user"],
+            password=st.secrets["mysql"]["password"],
+            database=st.secrets["mysql"]["database"],
+        )
+        return connection
+    except mysql.connector.Error as e:
+        st.error(f"Error connecting to MySQL: {e}")
+        return None
 
 if 'experiment_responses' not in st.session_state:
         st.session_state.experiment_responses = pd.DataFrame()
@@ -396,20 +408,14 @@ def experiment_page():
     
     display_confidence_labels(labels, style)   # Display confidence labels 
     display_truthful_deceptive_labels() # Display true-false labels
-
     
     # Submit Button Logic
     if st.button("Submit"):
-        # Show warning if the slider hasn't been moved
         if not st.session_state.slider_moved:
-                st.warning("Please move the slider!", icon="⚠️")
-                return # Prevent submission and navigation
-            
-        # Record duration of the current trial
-        st.session_state[f'end_time_{st.session_state.current_index}'] = time.time()
-        duration = st.session_state[f'end_time_{st.session_state.current_index}'] - st.session_state[f'start_time_{st.session_state.current_index}']
-        st.session_state[f'duration_{st.session_state.current_index}'] = duration
-        # Record date
+            st.warning("Please move the slider!", icon="⚠️")
+            return
+
+        duration = time.time() - st.session_state[f'start_time_{st.session_state.current_index}']
         current_date = datetime.datetime.now().strftime("%Y-%m-%d")
 
         response_data = pd.DataFrame(
@@ -432,30 +438,46 @@ def experiment_page():
             ]
         )
 
-        # Append response data to experiment_data in session state
         st.session_state.experiment_responses = pd.concat([st.session_state.experiment_responses, response_data], ignore_index=True)
-        combined_data = pd.concat([experiment_data, st.session_state.experiment_responses], ignore_index=True)
 
-        st.session_state.submitted = True 
+        # Database Insertion
+        conn = get_connection()
+        if conn:
+            try:
+                with conn.cursor() as cursor:
+                    for index, row in st.session_state.experiment_responses.iterrows():
+                        query = """
+                            INSERT INTO Sheet1 (date, accuracy_condition, prolific_id, participant_id, consent, statement_id, text, statement_condition, confidence_range, duration, correct_prediction, ai_judgment, participant_judgment)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """
+                        values = (
+                            row['date'], row['accuracy_condition'], row['prolific_id'],
+                            row['participant_id'], row['consent'], row['statement_id'],
+                            row['text'], row['statement_condition'], row['confidence_range'],
+                            row['duration'], row['correct_prediction'], row['ai_judgment'],
+                            row['participant_judgment']
+                        )
+                        cursor.execute(query, values)
+                    conn.commit()
+                st.success("Data successfully saved to database!") # add success message
+            except mysql.connector.Error as e:
+                st.error(f"Error inserting data into database: {e}")
+                conn.rollback()
+            finally:
+                conn.close()
+
+        st.session_state.submitted = True
         st.success("Your judgment has been recorded!")
         time.sleep(2)
         update_progress()
 
-        # Automatically navigate to the next stimulus or page
         if st.session_state.current_index < len(st.session_state.statements) - 1:
             st.session_state.current_index += 1
-            st.session_state.submitted = False  # Reset submission status for the next statement
-            st.session_state.slider_moved = False  # Reset slider moved status for the next statement
-            st.rerun()  
+            st.session_state.submitted = False
+            st.session_state.slider_moved = False
+            st.rerun()
         else:
-            with conn.session as s:
-                for index, row in combined_data.iterrows():
-                    s.execute('''
-                        INSERT INTO Sheet1 (date, accuracy_condition, prolific_id, participant_id, consent, statement_id, text, statement_condition, confidence_range, duration, correct_prediction, ai_judgment, participant_judgment) 
-                        VALUES (:date, :accuracy_condition, :prolific_id, :participant_id, :consent, :statement_id, :text, :statement_condition, :confidence_range, :duration, :correct_prediction, :ai_judgment, :participant_judgment)
-                    ''', params=row.to_dict())
-                s.commit()
-            st.session_state.page = 'final_questions'
+            st.session_state.page = 'final_questions'  
             st.rerun()
 
 def final_questions():
