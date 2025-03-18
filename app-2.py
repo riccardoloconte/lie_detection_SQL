@@ -9,7 +9,7 @@ from streamlit.components.v1 import HTML
 
 
 conn = st.connection("sql")
-df = conn.query("SELECT * FROM Sheet1)
+df = conn.query("SELECT * FROM Sheet1")
 
 
 if 'experiment_responses' not in st.session_state:
